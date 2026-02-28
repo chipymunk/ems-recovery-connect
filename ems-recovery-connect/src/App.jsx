@@ -4,25 +4,61 @@ const LOGO = "iVBORw0KGgoAAAANSUhEUgAABbIAAAQSCAYAAAB6jgzXAAAACXBIWXMAAC4jAAAuIw
 
 const COUNTIES = ["Allegheny","Berks","Bucks","Carbon","Chester","Delaware","Lancaster","Lehigh","Monroe","Montgomery","Northampton","Philadelphia","Schuylkill","Wayne"];
 
+// Rough bounding boxes [minLat, maxLat, minLng, maxLng] for auto county detection
+const COUNTY_BOUNDS = {
+  "Allegheny":   [40.18, 40.68, -80.37, -79.69],
+  "Berks":       [40.19, 40.65, -76.40, -75.67],
+  "Bucks":       [40.10, 40.62, -75.36, -74.85],
+  "Carbon":      [40.77, 41.18, -75.97, -75.38],
+  "Chester":     [39.72, 40.25, -75.98, -75.42],
+  "Delaware":    [39.83, 40.07, -75.63, -75.26],
+  "Lancaster":   [39.72, 40.32, -76.72, -75.88],
+  "Lehigh":      [40.44, 40.82, -75.90, -75.34],
+  "Monroe":      [40.87, 41.21, -75.57, -74.98],
+  "Montgomery":  [40.07, 40.42, -75.65, -75.06],
+  "Northampton": [40.60, 40.97, -75.56, -75.05],
+  "Philadelphia":[39.87, 40.14, -75.28, -74.96],
+  "Schuylkill":  [40.38, 40.98, -76.69, -75.72],
+  "Wayne":       [41.18, 41.76, -75.48, -74.70],
+};
+
+function detectCounty(lat, lng) {
+  for (const [county, [minLat, maxLat, minLng, maxLng]] of Object.entries(COUNTY_BOUNDS)) {
+    if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) return county;
+  }
+  return null;
+}
+
+// Haversine distance in miles
+function distanceMiles(lat1, lng1, lat2, lng2) {
+  const R = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+    Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 const RESOURCES = [
-  {id:1,name:"Allegheny Health Network - Behavioral Health",type:"Treatment",phone:"412-359-3300",address:"4 Allegheny Center, Pittsburgh, PA",services:["Inpatient","Outpatient","MAT"],availability:"24/7 Crisis",accepts:["Medicaid","Medicare","Private"],notes:"24/7 crisis line available"},
-  {id:2,name:"UPMC Western Psychiatric Hospital",type:"Treatment",phone:"412-624-2100",address:"3811 O'Hara St, Pittsburgh, PA",services:["Inpatient","Detox","MAT"],availability:"24/7",accepts:["Medicaid","Medicare","Private"],notes:"Level I psychiatric facility"},
-  {id:3,name:"Gateway Rehab - Pittsburgh",type:"Treatment",phone:"1-800-472-1177",address:"3606 Forbes Ave, Pittsburgh, PA",services:["Outpatient","IOP","MAT"],availability:"Business Hours",accepts:["Medicaid","Medicare","Private","Self-Pay"],notes:"Walk-ins accepted for assessment"},
-  {id:4,name:"Pyramid Healthcare - Pittsburgh",type:"Treatment",phone:"412-697-0580",address:"2601 SW Connelley Blvd, Pittsburgh, PA",services:["Residential","Outpatient","MAT"],availability:"Business Hours",accepts:["Medicaid","Medicare","Private"],notes:""},
-  {id:5,name:"Mon Yough Community Services",type:"Treatment",phone:"412-469-1100",address:"800 Kondor Ct, Duquesne, PA",services:["Outpatient","MAT","Counseling"],availability:"Business Hours",accepts:["Medicaid","Medicare"],notes:"Serves Mon Valley area"},
-  {id:6,name:"Alle-Kiski Medical Center - Detox",type:"Detox",phone:"724-226-7000",address:"651 Fourth Ave, New Kensington, PA",services:["Detox","Inpatient"],availability:"24/7",accepts:["Medicaid","Medicare","Private"],notes:"Medical detox unit"},
-  {id:7,name:"COMPASS - Crisis Line",type:"Crisis",phone:"1-888-796-8226",address:"Allegheny County-wide",services:["Crisis Intervention","Mobile Crisis","Warm Handoff"],availability:"24/7",accepts:["All"],notes:"Warm handoff capability for EMS"},
-  {id:8,name:"UPMC Community Care Behavioral Health",type:"MAT",phone:"412-578-8829",address:"100 Tannehill Dr, Pittsburgh, PA",services:["MAT","Outpatient","Counseling"],availability:"Business Hours",accepts:["Medicaid"],notes:"Medicaid managed care"},
-  {id:9,name:"Pittsburgh Recovery Center",type:"Peer Support",phone:"412-224-1349",address:"6 Smithfield St, Pittsburgh, PA",services:["Peer Support","Recovery Coaching","Navigation"],availability:"Business Hours",accepts:["All - Free"],notes:"Peer specialists available"},
-  {id:10,name:"Narcotics Anonymous - Allegheny Intergroup",type:"Peer Support",phone:"412-471-7903",address:"Pittsburgh, PA (meeting-based)",services:["Peer Support","Meetings","Sponsorship"],availability:"Multiple daily meetings",accepts:["Free"],notes:"Can connect to immediate meeting"},
-  {id:11,name:"Alcoholics Anonymous - Pittsburgh Central",type:"Peer Support",phone:"412-471-7472",address:"Pittsburgh, PA (meeting-based)",services:["Peer Support","Meetings"],availability:"Multiple daily meetings",accepts:["Free"],notes:""},
-  {id:12,name:"Allegheny County DHS - SUD Services",type:"Navigation",phone:"412-350-5701",address:"One Smithfield St, Pittsburgh, PA",services:["Referral","Case Management","Benefits Navigation"],availability:"Business Hours",accepts:["All"],notes:"Can help with insurance enrollment"},
-  {id:13,name:"Buprenorphine Provider Locator (SAMHSA)",type:"MAT",phone:"1-800-662-4357",address:"County-wide / Statewide",services:["MAT referral","Buprenorphine providers"],availability:"24/7 Helpline",accepts:["All insurance"],notes:"SAMHSA national helpline also available"},
-  {id:14,name:"Sojourner House",type:"Treatment",phone:"412-224-9580",address:"5872 Howe St, Pittsburgh, PA",services:["Residential","Outpatient","Women & Children"],availability:"Business Hours",accepts:["Medicaid","Self-Pay"],notes:"Women and children program"},
-  {id:15,name:"Three Rivers Center for Independent Living",type:"Peer Support",phone:"412-371-7700",address:"7110 Penn Ave, Pittsburgh, PA",services:["Peer Support","Recovery Navigation"],availability:"Business Hours",accepts:["All"],notes:""},
+  {id:1,name:"Allegheny Health Network - Behavioral Health",type:"Treatment",phone:"412-359-3300",address:"4 Allegheny Center, Pittsburgh, PA",services:["Inpatient","Outpatient","MAT"],availability:"24/7 Crisis",accepts:["Medicaid","Medicare","Private"],notes:"24/7 crisis line available",lat:40.4475,lng:-80.0158},
+  {id:2,name:"UPMC Western Psychiatric Hospital",type:"Treatment",phone:"412-624-2100",address:"3811 O'Hara St, Pittsburgh, PA",services:["Inpatient","Detox","MAT"],availability:"24/7",accepts:["Medicaid","Medicare","Private"],notes:"Level I psychiatric facility",lat:40.4444,lng:-79.9608},
+  {id:3,name:"Gateway Rehab - Pittsburgh",type:"Treatment",phone:"1-800-472-1177",address:"3606 Forbes Ave, Pittsburgh, PA",services:["Outpatient","IOP","MAT"],availability:"Business Hours",accepts:["Medicaid","Medicare","Private","Self-Pay"],notes:"Walk-ins accepted for assessment",lat:40.4390,lng:-79.9578},
+  {id:4,name:"Pyramid Healthcare - Pittsburgh",type:"Treatment",phone:"412-697-0580",address:"2601 SW Connelley Blvd, Pittsburgh, PA",services:["Residential","Outpatient","MAT"],availability:"Business Hours",accepts:["Medicaid","Medicare","Private"],notes:"",lat:40.4089,lng:-79.9842},
+  {id:5,name:"Mon Yough Community Services",type:"Treatment",phone:"412-469-1100",address:"800 Kondor Ct, Duquesne, PA",services:["Outpatient","MAT","Counseling"],availability:"Business Hours",accepts:["Medicaid","Medicare"],notes:"Serves Mon Valley area",lat:40.3754,lng:-79.8596},
+  {id:6,name:"Alle-Kiski Medical Center - Detox",type:"Detox",phone:"724-226-7000",address:"651 Fourth Ave, New Kensington, PA",services:["Detox","Inpatient"],availability:"24/7",accepts:["Medicaid","Medicare","Private"],notes:"Medical detox unit",lat:40.5701,lng:-79.7645},
+  {id:7,name:"COMPASS - Crisis Line",type:"Crisis",phone:"1-888-796-8226",address:"Allegheny County-wide",services:["Crisis Intervention","Mobile Crisis","Warm Handoff"],availability:"24/7",accepts:["All"],notes:"Warm handoff capability for EMS",lat:40.4406,lng:-79.9959},
+  {id:8,name:"UPMC Community Care Behavioral Health",type:"MAT",phone:"412-578-8829",address:"100 Tannehill Dr, Pittsburgh, PA",services:["MAT","Outpatient","Counseling"],availability:"Business Hours",accepts:["Medicaid"],notes:"Medicaid managed care",lat:40.4312,lng:-79.9706},
+  {id:9,name:"Pittsburgh Recovery Center",type:"Peer Support",phone:"412-224-1349",address:"6 Smithfield St, Pittsburgh, PA",services:["Peer Support","Recovery Coaching","Navigation"],availability:"Business Hours",accepts:["All - Free"],notes:"Peer specialists available",lat:40.4397,lng:-79.9961},
+  {id:10,name:"Narcotics Anonymous - Allegheny Intergroup",type:"Peer Support",phone:"412-471-7903",address:"Pittsburgh, PA",services:["Peer Support","Meetings","Sponsorship"],availability:"Multiple daily meetings",accepts:["Free"],notes:"Can connect to immediate meeting",lat:40.4406,lng:-79.9959},
+  {id:11,name:"Alcoholics Anonymous - Pittsburgh Central",type:"Peer Support",phone:"412-471-7472",address:"Pittsburgh, PA",services:["Peer Support","Meetings"],availability:"Multiple daily meetings",accepts:["Free"],notes:"",lat:40.4406,lng:-79.9959},
+  {id:12,name:"Allegheny County DHS - SUD Services",type:"Navigation",phone:"412-350-5701",address:"One Smithfield St, Pittsburgh, PA",services:["Referral","Case Management","Benefits Navigation"],availability:"Business Hours",accepts:["All"],notes:"Can help with insurance enrollment",lat:40.4383,lng:-79.9956},
+  {id:13,name:"Buprenorphine Provider Locator (SAMHSA)",type:"MAT",phone:"1-800-662-4357",address:"County-wide / Statewide",services:["MAT referral","Buprenorphine providers"],availability:"24/7 Helpline",accepts:["All insurance"],notes:"SAMHSA national helpline also available",lat:40.4406,lng:-79.9959},
+  {id:14,name:"Sojourner House",type:"Treatment",phone:"412-224-9580",address:"5872 Howe St, Pittsburgh, PA",services:["Residential","Outpatient","Women & Children"],availability:"Business Hours",accepts:["Medicaid","Self-Pay"],notes:"Women and children program",lat:40.4697,lng:-79.9289},
+  {id:15,name:"Three Rivers Center for Independent Living",type:"Peer Support",phone:"412-371-7700",address:"7110 Penn Ave, Pittsburgh, PA",services:["Peer Support","Recovery Navigation"],availability:"Business Hours",accepts:["All"],notes:"",lat:40.4581,lng:-79.9078},
 ];
 
-const SERVICE_TYPES = ["All","Treatment","Detox","MAT","Crisis","Peer Support","Navigation"];
+const SERVICE_TYPES = ["All","Near Me","Treatment","Detox","MAT","Crisis","Peer Support","Navigation"];
 const AGENCIES = ["Allegheny County EMS","Pittsburgh EMS","Penn Hills EMS","Bethel Park EMS","Monroeville EMS","North Allegheny EMS","South Hills EMS","McKeesport EMS","Clairton EMS","Duquesne EMS","Bellevue EMS","Other Allegheny County Agency"];
 const CALL_TYPES = ["Overdose/Naloxone Administration","Overdose - No Naloxone Needed","Behavioral Health Crisis","Alcohol Intoxication","Other SUD-Related Call"];
 const OUTCOMES = ["Patient Transported - Accepted Referral","Patient Transported - Declined Referral","Patient Refused Transport - Accepted Referral","Patient Refused Transport - Declined Referral","Unable to Engage Patient","Patient Deceased"];
@@ -53,19 +89,17 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 }
 
-// localStorage helpers (replaces window.storage for deployed version)
-function lsGet(key) {
-  try { const v = localStorage.getItem(key); return v ? v : null; } catch(e) { return null; }
-}
-function lsSet(key, val) {
-  try { localStorage.setItem(key, val); } catch(e) {}
-}
+function lsGet(key) { try { return localStorage.getItem(key); } catch(e) { return null; } }
+function lsSet(key, val) { try { localStorage.setItem(key, val); } catch(e) {} }
 
 export default function App() {
   const [splash, setSplash] = useState(true);
   const [view, setView] = useState("home");
   const [county, setCounty] = useState("Allegheny");
   const [countyOpen, setCountyOpen] = useState(false);
+  const [userLat, setUserLat] = useState(null);
+  const [userLng, setUserLng] = useState(null);
+  const [locationStatus, setLocationStatus] = useState("idle"); // idle, requesting, granted, denied
   const [filterType, setFilterType] = useState("All");
   const [filterSearch, setFilterSearch] = useState("");
   const [selRes, setSelRes] = useState(null);
@@ -83,18 +117,62 @@ export default function App() {
       const c = lsGet("county"); if (c) setCounty(c);
     } catch(e) {}
     const t = setTimeout(() => setSplash(false), 2800);
+    // Request location on load
+    requestLocation();
     return () => clearTimeout(t);
   }, []);
+
+  function requestLocation() {
+    if (!navigator.geolocation) return;
+    setLocationStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserLat(lat);
+        setUserLng(lng);
+        setLocationStatus("granted");
+        // Auto-detect county
+        const detected = detectCounty(lat, lng);
+        if (detected) {
+          setCounty(detected);
+          lsSet("county", detected);
+        }
+      },
+      () => setLocationStatus("denied"),
+      {enableHighAccuracy: true, timeout: 10000}
+    );
+  }
 
   function pickCounty(c) { setCounty(c); setCountyOpen(false); lsSet("county", c); }
   function saveEnc(u) { setEncounters(u); lsSet("enc", JSON.stringify(u)); }
 
-  const filtered = RESOURCES.filter(r => {
-    const mt = filterType === "All" || r.type === filterType;
-    const q = filterSearch.toLowerCase();
-    const ms = !q || r.name.toLowerCase().includes(q) || r.services.some(s => s.toLowerCase().includes(q));
-    return mt && ms;
-  });
+  // Add distance to resources and sort
+  function getResourcesWithDistance() {
+    return RESOURCES.map(r => ({
+      ...r,
+      distance: (userLat && userLng && r.lat && r.lng)
+        ? distanceMiles(userLat, userLng, r.lat, r.lng)
+        : null
+    }));
+  }
+
+  const resourcesWithDist = getResourcesWithDistance();
+
+  const filtered = resourcesWithDist
+    .filter(r => {
+      if (filterType === "Near Me") return r.distance !== null;
+      const mt = filterType === "All" || r.type === filterType;
+      const q = filterSearch.toLowerCase();
+      const ms = !q || r.name.toLowerCase().includes(q) || r.services.some(s => s.toLowerCase().includes(q));
+      return mt && ms;
+    })
+    .sort((a, b) => {
+      if (filterType === "Near Me" && a.distance !== null && b.distance !== null) {
+        return a.distance - b.distance;
+      }
+      return 0;
+    });
 
   function submitEnc() {
     if (!form.agency || !form.callType || !form.outcome) { setFormStatus("err"); return; }
@@ -152,8 +230,13 @@ export default function App() {
     ".hdr-img{height:26px;background:white;border-radius:4px;padding:3px 5px;flex-shrink:0}",
     ".logo{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#58a6ff;letter-spacing:0.04em;white-space:nowrap}",
     ".logo span{color:#f0883e}",
+    ".hdr-right{display:flex;align-items:center;gap:6px;flex-shrink:0}",
     ".cbadge{font-family:'IBM Plex Mono',monospace;font-size:10px;background:#1f3a2a;color:#3fb950;border:1px solid #2ea043;padding:4px 8px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all 0.15s;user-select:none;white-space:nowrap}",
     ".cbadge:hover{background:#2ea043;color:#0d1117}",
+    ".locbtn{background:transparent;border:1px solid #30363d;border-radius:20px;padding:4px 8px;color:#8b949e;font-size:12px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:3px}",
+    ".locbtn.granted{border-color:#2ea043;color:#3fb950}",
+    ".locbtn.denied{border-color:#f85149;color:#f85149}",
+    ".locbtn.requesting{border-color:#58a6ff;color:#58a6ff}",
     ".nav{display:flex;background:#161b22;border-bottom:1px solid #30363d}",
     ".nb{flex:1;padding:8px 2px;border:none;background:transparent;color:#8b949e;font-size:10px;font-family:'IBM Plex Sans',sans-serif;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:2px}",
     ".nb.active{color:#58a6ff;border-bottom-color:#58a6ff}",
@@ -174,6 +257,10 @@ export default function App() {
     ".hero{background:linear-gradient(135deg,#1c2d3f 0%,#1a1f2e 100%);border:1px solid #30363d;border-radius:10px;padding:20px;margin-bottom:16px}",
     ".hero h2{font-size:18px;font-weight:600;color:#e6edf3;margin-bottom:6px}",
     ".hero p{font-size:13px;color:#8b949e;line-height:1.5}",
+    ".loc-banner{margin-top:12px;padding:8px 12px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px}",
+    ".loc-banner.granted{background:rgba(63,185,80,0.1);border:1px solid #2ea043;color:#3fb950}",
+    ".loc-banner.denied{background:rgba(248,81,73,0.1);border:1px solid #f85149;color:#f85149}",
+    ".loc-banner.requesting{background:rgba(88,166,255,0.1);border:1px solid #58a6ff;color:#58a6ff}",
     ".stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}",
     ".sbox{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px 10px;text-align:center}",
     ".snum{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:#58a6ff}",
@@ -193,10 +280,14 @@ export default function App() {
     ".frow{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}",
     ".fchip{padding:5px 12px;border-radius:20px;border:1px solid #30363d;background:transparent;color:#8b949e;font-size:12px;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Sans',sans-serif;transition:all 0.15s}",
     ".fchip.active{background:#1c2d3f;color:#58a6ff;border-color:#58a6ff}",
+    ".fchip.nearme{border-color:#2ea043;color:#3fb950}",
+    ".fchip.nearme.active{background:#0f2018;color:#3fb950;border-color:#3fb950}",
     ".rcard{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all 0.15s}",
     ".rcard:hover{border-color:#58a6ff}",
     ".rcard.exp{border-color:#58a6ff;background:#1c2d3f}",
+    ".rcard-top{display:flex;justify-content:space-between;align-items:flex-start}",
     ".rname{font-size:14px;font-weight:600;color:#e6edf3;line-height:1.3;margin-bottom:4px}",
+    ".rdist{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3fb950;white-space:nowrap;margin-left:8px;flex-shrink:0}",
     ".rtype{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;border:1px solid;display:inline-block;margin-bottom:6px}",
     ".t-Treatment{color:#58a6ff;border-color:#1c4a7a;background:#1c2d3f}",
     ".t-Detox{color:#f0883e;border-color:#5a3010;background:#2d1e0e}",
@@ -281,6 +372,9 @@ export default function App() {
     ".empty-icon{font-size:40px;margin-bottom:12px}",
   ].join("\n");
 
+  const locIcon = locationStatus === "granted" ? "📍" : locationStatus === "denied" ? "📍" : "📍";
+  const locLabel = locationStatus === "granted" ? "Located" : locationStatus === "denied" ? "Location off" : locationStatus === "requesting" ? "Locating..." : "Enable GPS";
+
   if (splash) return (
     <>
       <style>{CSS}</style>
@@ -318,8 +412,13 @@ export default function App() {
               <img className="hdr-img" src={"data:image/png;base64," + LOGO} alt="IRC" />
               <div className="logo">EMS<span>·</span>RECOVERY<span>·</span>CONNECT</div>
             </div>
-            <div className="cbadge" onClick={() => setCountyOpen(true)}>
-              {county} Co. <span style={{fontSize:7}}>&#9660;</span>
+            <div className="hdr-right">
+              <button className={"locbtn " + locationStatus} onClick={requestLocation} title={locLabel}>
+                {locIcon} {locationStatus === "granted" ? "GPS" : locationStatus === "requesting" ? "..." : "GPS"}
+              </button>
+              <div className="cbadge" onClick={() => setCountyOpen(true)}>
+                {county} Co. <span style={{fontSize:7}}>&#9660;</span>
+              </div>
             </div>
           </div>
         </div>
@@ -352,6 +451,15 @@ export default function App() {
               <div className="hero">
                 <h2>{county} County Recovery Connect</h2>
                 <p>Rapid access to SUD recovery resources for EMS providers. Screen patients, log encounters, track outcomes.</p>
+                {locationStatus === "granted" && (
+                  <div className="loc-banner granted">&#128205; Location active — resources sorted by distance</div>
+                )}
+                {locationStatus === "denied" && (
+                  <div className="loc-banner denied">&#128205; Location access denied — tap GPS in header to retry</div>
+                )}
+                {locationStatus === "requesting" && (
+                  <div className="loc-banner requesting">&#128205; Detecting your location...</div>
+                )}
                 <div className="stats">
                   <div className="sbox"><div className="snum">{total}</div><div className="slbl">Encounters</div></div>
                   <div className="sbox"><div className="snum">{acceptRate}%</div><div className="slbl">Accept Rate</div></div>
@@ -359,7 +467,7 @@ export default function App() {
                 </div>
               </div>
               <div className="qlinks">
-                <div className="qcard" onClick={() => setView("resources")}><div className="qcard-icon">📋</div><div className="qcard-title">Find a Program</div><div className="qcard-sub">{RESOURCES.length} resources</div></div>
+                <div className="qcard" onClick={() => { setFilterType("Near Me"); setView("resources"); }}><div className="qcard-icon">📍</div><div className="qcard-title">Nearest Resources</div><div className="qcard-sub">{locationStatus === "granted" ? "Sorted by distance" : "Enable GPS first"}</div></div>
                 <div className="qcard" onClick={() => { resetDast(); setView("dast"); }}><div className="qcard-icon">🧪</div><div className="qcard-title">DAST-10 Screen</div><div className="qcard-sub">Validated screening</div></div>
                 <div className="qcard" onClick={() => { setFilterType("Crisis"); setView("resources"); }}><div className="qcard-icon">🆘</div><div className="qcard-title">Crisis Resources</div><div className="qcard-sub">24/7 options</div></div>
                 <div className="qcard" onClick={() => { setFilterType("MAT"); setView("resources"); }}><div className="qcard-icon">💊</div><div className="qcard-title">MAT Programs</div><div className="qcard-sub">Buprenorphine, etc.</div></div>
@@ -372,13 +480,21 @@ export default function App() {
               <input className="searchbar" placeholder="Search resources or services..." value={filterSearch} onChange={e => setFilterSearch(e.target.value)} />
               <div className="frow">
                 {SERVICE_TYPES.map(t => (
-                  <button key={t} className={"fchip" + (filterType===t ? " active" : "")} onClick={() => setFilterType(t)}>{t}</button>
+                  <button key={t} className={"fchip" + (filterType===t ? " active" : "") + (t==="Near Me" ? " nearme" : "")} onClick={() => setFilterType(t)}>
+                    {t === "Near Me" ? "📍 Near Me" : t}
+                  </button>
                 ))}
               </div>
+              {filterType === "Near Me" && locationStatus !== "granted" && (
+                <div className="disc"><p><strong>GPS not active.</strong> Tap the GPS button in the header to enable location and sort by distance.</p></div>
+              )}
               {filtered.length === 0 && <div className="empty"><div className="empty-icon">🔍</div>No results.</div>}
               {filtered.map(r => (
                 <div key={r.id} className={"rcard" + (selRes===r.id ? " exp" : "")} onClick={() => setSelRes(selRes===r.id ? null : r.id)}>
-                  <div className="rname">{r.name}</div>
+                  <div className="rcard-top">
+                    <div className="rname">{r.name}</div>
+                    {r.distance !== null && <div className="rdist">{r.distance < 10 ? r.distance.toFixed(1) : Math.round(r.distance)} mi</div>}
+                  </div>
                   <span className={"rtype t-" + r.type.replace(" ","")}>{r.type}</span>
                   <div className={"avail" + (r.availability.includes("24/7") ? " avail247" : "")}>&#x23F1; {r.availability}</div>
                   {selRes === r.id && (
@@ -441,7 +557,7 @@ export default function App() {
               {form.dastScore !== "" && <div className="dast-att">DAST-10: {form.dastScore} - {dastInterp(parseInt(form.dastScore)).level} Risk attached</div>}
               <div className="fsec">
                 <div className="ftitle">Encounter Details</div>
-                <div className="field"><label>County</label><div className="cfld">&#128205; {county} County</div></div>
+                <div className="field"><label>County</label><div className="cfld">&#128205; {county} County{locationStatus==="granted" ? " (GPS)" : ""}</div></div>
                 <div className="field">
                   <label>Agency <span className="req">*</span></label>
                   <select value={form.agency} onChange={e => setForm({...form, agency:e.target.value})}>
